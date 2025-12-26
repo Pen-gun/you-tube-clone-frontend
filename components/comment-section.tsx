@@ -101,7 +101,7 @@ export function CommentSection({ videoId }: { videoId: string }) {
       )}
 
       <div className="space-y-6">
-        {comments?.map((comment) => (
+        {comments?.map((comment: any) => (
           <div key={comment._id} className="flex gap-4">
             <Avatar>
               <AvatarImage src={comment.owner.avatar || "/placeholder.svg?height=40&width=40&query=user avatar"} />

@@ -11,6 +11,9 @@ export const axiosInstance = axios.create({
   },
 })
 
+// Track a single in-flight refresh to avoid stampede requests
+let refreshPromise: Promise<any> | null = null
+
 // Response interceptor to handle API responses
 axiosInstance.interceptors.response.use(
   (response) => {
@@ -21,17 +24,28 @@ axiosInstance.interceptors.response.use(
     return response
   },
   async (error) => {
-    // Handle 401 Unauthorized - token expired
-    if (error.response?.status === 401) {
+    const originalRequest = error.config || {}
+
+    // Avoid retrying refresh endpoint and handle 401 once per request
+    const isRefreshEndpoint = typeof originalRequest.url === "string" && originalRequest.url.includes("/users/refresh-token")
+
+    if (error.response?.status === 401 && !isRefreshEndpoint && !originalRequest._retry) {
       try {
-        // Try to refresh token
-        await axiosInstance.post("/users/refresh-token")
-        // Retry the original request
-        return axiosInstance(error.config)
+        if (!refreshPromise) {
+          // Kick off a single refresh request shared by all waiters
+          refreshPromise = axiosInstance.post("/users/refresh-token").finally(() => {
+            refreshPromise = null
+          })
+        }
+
+        await refreshPromise
+
+        // Mark so we do not loop forever if it still fails
+        originalRequest._retry = true
+        return axiosInstance(originalRequest)
       } catch (refreshError) {
-        // Refresh failed, redirect to login
         if (typeof window !== "undefined") {
-          window.location.href = "/auth"
+          // Redirect to login on refresh failure
         }
         return Promise.reject(refreshError)
       }
