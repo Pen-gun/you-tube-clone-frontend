@@ -7,7 +7,7 @@ export function RelatedVideos({ currentVideoId }: { currentVideoId: string }) {
   const { data: videos, isLoading } = useVideos({ limit: 10, sortBy: "views", order: "desc" })
 
   // Filter out the current video from related videos
-  const relatedVideos = videos?.filter((video) => video._id !== currentVideoId).slice(0, 8)
+  const relatedVideos = videos?.videos.filter((video) => video._id !== currentVideoId).slice(0, 8)
 
   if (isLoading) {
     return (

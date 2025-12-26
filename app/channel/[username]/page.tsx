@@ -1,6 +1,5 @@
 "use client"
 
-import { use } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 import { Header } from "@/components/header"
@@ -10,17 +9,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { VideoGrid } from "@/components/video-grid"
 
 interface ChannelPageProps {
-  params: Promise<{
+  params: {
     username: string
-  }>
+  }
 }
 
 export default function ChannelPage({ params }: ChannelPageProps) {
-  const { username } = use(params)
-  
   const { data: channelData, isLoading, error } = useQuery({
-    queryKey: ["channel", username],
-    queryFn: () => api.getUserChannelProfile(username),
+    queryKey: ["channel", params.username],
+    queryFn: () => api.getUserChannelProfile(params.username),
   })
 
   if (isLoading) {
