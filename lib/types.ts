@@ -66,3 +66,21 @@ export interface Tweet {
   createdAt: string
   updatedAt: string
 }
+
+// Generic API response wrapper used by the backend
+export interface ApiResponse<T> {
+  success: boolean
+  data: T
+  message?: string
+}
+
+// Query parameters supported by the /videos endpoint
+// These are used for things like pagination, sorting and searching.
+export interface GetVideosParams {
+  page?: number
+  limit?: number
+  sortBy?: string
+  order?: "asc" | "desc"
+  // Free‑text search across video title / description / tags on the backend
+  query?: string
+}

@@ -2,9 +2,15 @@
 
 import { VideoCard } from "@/components/video-card"
 import { useVideos } from "@/lib/react-query/hooks"
+import type { GetVideosParams } from "@/lib/types"
 
-export function VideoGrid() {
-  const { data: videos, isLoading, error } = useVideos({ limit: 20, sortBy: "createdAt", order: "desc" })
+interface VideoGridProps {
+  params?: GetVideosParams
+}
+
+export function VideoGrid({ params }: VideoGridProps) {
+  const mergedParams: GetVideosParams = params ?? { limit: 20, sortBy: "createdAt", order: "desc" }
+  const { data, isLoading, error } = useVideos(mergedParams)
 
   if (isLoading) {
     return (
@@ -33,7 +39,9 @@ export function VideoGrid() {
     )
   }
 
-  if (!videos || videos.length === 0) {
+  const list = (data as any)?.videos ?? data ?? []
+
+  if (!list || list.length === 0) {
     return (
       <div className="flex items-center justify-center rounded-lg border border-border bg-card p-8">
         <p className="text-muted-foreground">No videos found</p>
@@ -43,7 +51,7 @@ export function VideoGrid() {
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {videos?.videos.map((video: any) => (
+      {list.map((video: any) => (
         <VideoCard key={video._id} video={video} />
       ))}
     </div>

@@ -1,14 +1,14 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Video } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useLogin, useRegister } from "@/lib/react-query/hooks"
 
 export default function AuthPage() {
@@ -20,25 +20,42 @@ export default function AuthPage() {
   const [avatar, setAvatar] = useState<File | null>(null)
   const [coverImage, setCoverImage] = useState<File | null>(null)
   const [error, setError] = useState("")
+  const [touched, setTouched] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const loginMutation = useLogin()
   const registerMutation = useRegister()
 
+  // Allow deep-linking to /auth?mode=register
+  useEffect(() => {
+    const mode = searchParams.get("mode")
+    if (mode === "register") {
+      setIsLogin(false)
+    }
+  }, [searchParams])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setTouched(true)
     setError("")
 
     try {
       if (isLogin) {
         loginMutation.mutate(
-          { identifier: email, password },
+          { identifier: email.trim(), password },
           {
             onSuccess: () => {
               router.push("/")
             },
             onError: (err) => {
-              setError(err.message)
+              const message = err instanceof Error ? err.message : "Unable to sign in. Please try again."
+              // Normalise common auth errors into a friendly message
+              if (message.toLowerCase().includes("invalid") || message.toLowerCase().includes("incorrect")) {
+                setError("Email / username or password is incorrect.")
+              } else {
+                setError(message)
+              }
             },
           },
         )
@@ -49,9 +66,9 @@ export default function AuthPage() {
         }
 
         const formData = new FormData()
-        formData.append("fullName", fullName)
-        formData.append("username", username)
-        formData.append("email", email)
+        formData.append("fullName", fullName.trim())
+        formData.append("username", username.trim())
+        formData.append("email", email.trim())
         formData.append("password", password)
         formData.append("avatar", avatar)
         if (coverImage) {
@@ -63,7 +80,8 @@ export default function AuthPage() {
             router.push("/")
           },
           onError: (err) => {
-            setError(err.message)
+            const message = err instanceof Error ? err.message : "Unable to create account. Please try again."
+            setError(message)
           },
         })
       }
@@ -73,6 +91,16 @@ export default function AuthPage() {
   }
 
   const isLoading = loginMutation.isPending || registerMutation.isPending
+
+  const isLoginDisabled = useMemo(() => {
+    if (!isLogin) return false
+    return !email.trim() || !password
+  }, [email, password, isLogin])
+
+  const isRegisterDisabled = useMemo(() => {
+    if (isLogin) return false
+    return !fullName.trim() || !username.trim() || !email.trim() || !password || !avatar
+  }, [avatar, email, fullName, isLogin, password, username])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -120,7 +148,7 @@ export default function AuthPage() {
               </>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">{isLogin ? "Email or Username" : "Email"}</Label>
+                  <Label htmlFor="email">{isLogin ? "Email or Username" : "Email"}</Label>
               <Input
                 id="email"
                 type={isLogin ? "text" : "email"}
@@ -164,8 +192,16 @@ export default function AuthPage() {
                 </div>
               </>
             )}
-            {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            {error && (
+              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                {error}
+              </div>
+            )}
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isLoading || (touched && (isLogin ? isLoginDisabled : isRegisterDisabled))}
+            >
               {isLoading ? "Please wait..." : isLogin ? "Sign In" : "Create Account"}
             </Button>
           </form>
